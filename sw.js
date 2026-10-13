@@ -1,4 +1,4 @@
-const CACHE='fit-personal-v1';
+const CACHE='fit-personal-v2';
 const ASSETS=['./','./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
