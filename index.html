@@ -32,24 +32,44 @@ function videoPanel(name){let id=get('exerciseVideoLinks',{})[name]||(name==='П
 
 const exerciseNames=['Присед с гантелью','Жим гантелей лёжа','Тяга верхнего блока','Румынская тяга','Жим гантелей сидя','Планка','Жим ногами','Горизонтальная тяга блока','Жим гантелей на наклонной скамье','Ягодичный мост','Подъём гантелей на бицепс','Разгибание рук на блоке'];
 let models={},modelSpeed=1,modelPaused=false;
-function modelPanel(name){let id=exerciseNames.indexOf(name);return `<div class="model3d" id="model-${id}"><div class="status">Схематическая 3D-демонстрация · не заменяет тренера</div></div><div class="modeltools"><button type="button" onclick="toggle3D()">⏯ Пауза / пуск</button><button type="button" onclick="speed3D()">Скорость ×<span id="speed3d">1</span></button><button type="button" onclick="rotate3D(${id})">↻ Повернуть</button></div><p class="small">Движение условное: проверяйте амплитуду и положение суставов по текстовой инструкции.</p>`}
+function modelPanel(name){let id=exerciseNames.indexOf(name);return `<div class="model3d" id="model-${id}"><div class="status">Упрощённая 3D-схема · не заменяет тренера</div></div><div class="modeltools"><button type="button" onclick="toggle3D()">⏯ Пауза / пуск</button><button type="button" onclick="speed3D()">Скорость ×<span id="speed3d">1</span></button><button type="button" onclick="rotate3D(${id})">↻ Повернуть</button></div><p class="small">Движение условное: проверяйте амплитуду и положение суставов по текстовой инструкции.</p>`}
 function toggle3D(){modelPaused=!modelPaused}
 function speed3D(){modelSpeed=modelSpeed===1?.5:modelSpeed===.5?1.5:1;document.querySelectorAll('#speed3d').forEach(x=>x.textContent=modelSpeed)}
 function rotate3D(id){if(models[id])models[id].angle+=Math.PI/4}
-function boot3D(){if(!window.THREE)return;document.querySelectorAll('.model3d').forEach(el=>{let id=+el.id.slice(6);if(models[id])return;try{createModel(el,id)}catch(e){el.querySelector('.status').textContent='Не удалось запустить 3D: '+e.message}})}
-function createModel(el,id){const T=THREE,w=el.clientWidth||320,h=270,scene=new T.Scene(),camera=new T.PerspectiveCamera(38,w/h,.1,100);camera.position.set(4,2.6,7);camera.lookAt(0,1.25,0);const renderer=new T.WebGLRenderer({antialias:true,alpha:true,powerPreference:'low-power'});renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));renderer.setSize(w,h);el.prepend(renderer.domElement);scene.add(new T.HemisphereLight(0xffffff,0x556677,2.5));let light=new T.DirectionalLight(0xffffff,1.5);light.position.set(2,5,5);scene.add(light);
-let floor=new T.Mesh(new T.CircleGeometry(2.3,40),new T.MeshStandardMaterial({color:0x242c34,roughness:1}));floor.rotation.x=-Math.PI/2;scene.add(floor);
-const mat=new T.MeshStandardMaterial({color:0xb9f568,roughness:.55}),skin=new T.MeshStandardMaterial({color:0xe8b99a}),dark=new T.MeshStandardMaterial({color:0x76818b,metalness:.35,roughness:.4});
-function ball(r,m){let o=new T.Mesh(new T.SphereGeometry(r,14,10),m);scene.add(o);return o}
-function rod(a,b,r,m){let o=new T.Mesh(new T.CylinderGeometry(r,r,1,12),m);scene.add(o);return o}
-const parts={head:ball(.16,skin),body:rod(0,0,.17,mat),upper:[],lower:[],thigh:[],shin:[],weights:[]};for(let i=0;i<2;i++){parts.upper.push(rod(0,0,.07,skin));parts.lower.push(rod(0,0,.06,skin));parts.thigh.push(rod(0,0,.105,mat));parts.shin.push(rod(0,0,.085,mat));parts.weights.push(ball(.13,dark))}
-function segment(mesh,a,b){let A=new T.Vector3(...a),B=new T.Vector3(...b);mesh.position.copy(A).add(B).multiplyScalar(.5);mesh.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),B.clone().sub(A).normalize());mesh.scale.set(1,A.distanceTo(B),1)}
-models[id]={angle:0};let t=0;function frame(){if(!el.isConnected){renderer.dispose();delete models[id];return}requestAnimationFrame(frame);if(!modelPaused)t+=.025*modelSpeed;let q=(1-Math.cos(t))/2,kind=id;let squat=[0,6].includes(kind),hinge=kind===3,press=[1,4,8].includes(kind),pull=[2,7].includes(kind),bridge=kind===9,plank=kind===5,curl=kind===10,triceps=kind===11;
-let hipY=1.17-(squat?.42*q:0),shoulderY=2.08-(squat?.43*q:0),lean=hinge?.55*q:0;
-let hip=[0,hipY,0],neck=[0,shoulderY,-lean],head=[0,shoulderY+.24,-lean];if(plank){hip=[0,.83,0];neck=[0,.88,-1.05];head=[0,.91,-1.3]}if(bridge){hip=[0,.65+.35*q,0];neck=[0,.72,-.85];head=[0,.73,-1.08]}if(kind===1||kind===8){hip=[0,.63,.65];neck=[0,.7,-.7];head=[0,.7,-.94]}
-segment(parts.body,hip,neck);parts.head.position.set(...head);
-for(let i=0;i<2;i++){let side=i===0?-1:1,sh=[side*.23,neck[1]-.07,neck[2]],elbow=[side*.42,neck[1]-.43,neck[2]+.05],hand=[side*.45,neck[1]-.76,neck[2]+.1];if(press){elbow=[side*.47,neck[1]+.1+.35*q,neck[2]];hand=[side*.47,neck[1]+.45+.55*q,neck[2]]}if(pull){elbow=[side*.38,neck[1]-.23-.35*q,neck[2]+.15*q];hand=[side*.35,neck[1]+.48-.95*q,neck[2]-.15]}if(curl){elbow=[side*.3,neck[1]-.48,neck[2]];hand=[side*.35,neck[1]-.88+.62*q,neck[2]+.22*q]}if(triceps){elbow=[side*.32,neck[1]-.4,neck[2]];hand=[side*.35,neck[1]-.48-.42*q,neck[2]+.25*(1-q)]}if(hinge){elbow=[side*.32,neck[1]-.48,neck[2]-.1];hand=[side*.33,neck[1]-.85,neck[2]-.12]}if(plank){elbow=[side*.32,.5,-.88];hand=[side*.34,.27,-1.04]}if(bridge){elbow=[side*.34,.35,-.58];hand=[side*.4,.2,-.6]}segment(parts.upper[i],sh,elbow);segment(parts.lower[i],elbow,hand);parts.weights[i].position.set(...hand);
-let knee=[side*.17,.64+(squat?-.2*q:0),.22+(squat?.45*q:0)],foot=[side*.18,.12,.13];if(plank){knee=[side*.18,.55,.42];foot=[side*.18,.19,1.12]}if(bridge){knee=[side*.19,.58,.6];foot=[side*.2,.12,.75]}if(kind===1||kind===8){knee=[side*.2,.55,1.05];foot=[side*.2,.12,1.18]}if(kind===6){knee=[side*.2,.65,.38+.35*q];foot=[side*.2,.32,.95-.3*q]}segment(parts.thigh[i],[side*.16,hip[1],hip[2]],knee);segment(parts.shin[i],knee,foot)}camera.position.set(5*Math.sin(.65+models[id].angle),2.8,6*Math.cos(.65+models[id].angle));camera.lookAt(0,1.1,0);renderer.render(scene,camera)}frame()}
+function boot3D(){document.querySelectorAll('.model3d').forEach(el=>{let id=+el.id.slice(6);if(models[id])return;try{createModel(el,id)}catch(e){el.querySelector('.status').textContent='Ошибка анимации: '+e.message}})}
+function createModel(el,id){
+ const canvas=document.createElement('canvas');canvas.style.cssText='display:block;width:100%;height:270px';canvas.width=Math.max(320,el.clientWidth)*2;canvas.height=540;el.prepend(canvas);
+ const ctx=canvas.getContext('2d');if(!ctx)throw Error('Canvas недоступен');
+ models[id]={angle:0,canvas};let t=0;
+ function draw(){if(!el.isConnected){delete models[id];return}requestAnimationFrame(draw);if(!modelPaused)t+=.023*modelSpeed;
+ const q=(1-Math.cos(t))/2, squat=[0,6].includes(id),hinge=id===3,press=[1,4,8].includes(id),pull=[2,7].includes(id),bridge=id===9,plank=id===5,curl=id===10,triceps=id===11;
+ const w=canvas.width,h=canvas.height;ctx.clearRect(0,0,w,h);let theta=.4+models[id].angle;
+ function proj(v){let [x,y,z]=v;let X=x*Math.cos(theta)+z*Math.sin(theta),Z=-x*Math.sin(theta)+z*Math.cos(theta);let k=1/(1+Z*.08);return [w/2+X*w*.20*k,h*.86-y*h*.31*k]}
+ function line(a,b,width,color){let A=proj(a),B=proj(b);ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(...A);ctx.lineTo(...B);ctx.stroke()}
+ function dot(v,r,color){let P=proj(v);ctx.fillStyle=color;ctx.beginPath();ctx.arc(...P,r,0,Math.PI*2);ctx.fill()}
+ let hip=[0,1.17-(squat?.42*q:0),0],neck=[0,2.08-(squat?.43*q:0),-(hinge?.55*q:0)],head=[0,neck[1]+.24,neck[2]];
+ if(plank){hip=[0,.83,0];neck=[0,.88,-1.05];head=[0,.91,-1.3]}
+ if(bridge){hip=[0,.65+.35*q,0];neck=[0,.72,-.85];head=[0,.73,-1.08]}
+ if(id===1||id===8){hip=[0,.63,.65];neck=[0,.7,-.7];head=[0,.7,-.94]}
+ ctx.fillStyle='#26323b';ctx.beginPath();ctx.ellipse(w/2,h*.91,w*.29,h*.045,0,0,Math.PI*2);ctx.fill();
+ line(hip,neck,32,'#b9f568');dot(head,22,'#e8b99a');
+ for(let i=0;i<2;i++){let side=i===0?-1:1,sh=[side*.23,neck[1]-.07,neck[2]],elbow=[side*.42,neck[1]-.43,neck[2]+.05],hand=[side*.45,neck[1]-.76,neck[2]+.1];
+ if(press){elbow=[side*.47,neck[1]+.1+.35*q,neck[2]];hand=[side*.47,neck[1]+.45+.55*q,neck[2]]}
+ if(pull){elbow=[side*.38,neck[1]-.23-.35*q,neck[2]+.15*q];hand=[side*.35,neck[1]+.48-.95*q,neck[2]-.15]}
+ if(curl){elbow=[side*.3,neck[1]-.48,neck[2]];hand=[side*.35,neck[1]-.88+.62*q,neck[2]+.22*q]}
+ if(triceps){elbow=[side*.32,neck[1]-.4,neck[2]];hand=[side*.32,neck[1]-.38-.48*q,neck[2]+.4*(1-q)]}
+ line(sh,elbow,17,'#e8b99a');line(elbow,hand,15,'#e8b99a');dot(hand,12,'#76818b');
+ let knee=[side*.17,.64-(squat?.2*q:0),.22+(squat?.45*q:0)],foot=[side*.18,.12,.13];
+ if(plank){knee=[side*.18,.55,.42];foot=[side*.18,.19,1.12]}
+ if(bridge){knee=[side*.19,.58,.6];foot=[side*.2,.12,.75]}
+ if(id===1||id===8){knee=[side*.2,.55,1.05];foot=[side*.2,.12,1.18]}
+ if(id===6){knee=[side*.2,.65,.38+.35*q];foot=[side*.2,.32,.95-.3*q]}
+ line([side*.16,hip[1],hip[2]],knee,26,'#b9f568');line(knee,foot,23,'#b9f568');dot(foot,13,'#77818b');
+ }
+ ctx.font='24px -apple-system,Arial';ctx.fillStyle='#c7d0d8';ctx.fillText('3D-схема движения',18,34);
+ }
+ draw();
+}
 const obs=new MutationObserver(()=>boot3D());obs.observe(document.getElementById('app'),{childList:true,subtree:true});document.getElementById('app').addEventListener('toggle',()=>setTimeout(boot3D,50),true);
 
 function exerciseCard(ex){let [name,n,reps]=ex;let prev=get('history',[]).slice().reverse().flatMap(x=>x.entries).find(x=>x.exercise===name);return `<div class="exercise"><h3>${name}</h3><div class="small">${n} подхода · ${reps} ${name==='Планка'?'секунд':'повторений'}${prev?' · прошлый вес: '+prev.weight+' кг':''}</div>${started?Array.from({length:n},(_,i)=>`<div class="sets setrow" data-name="${name}" data-set="${i+1}"><span>${i+1}.</span><label>кг <input class="weight" type="number" min="0" step=".5" value="${prev?.weight||0}"></label><label>${name==='Планка'?'сек':'раз'} <input class="reps" type="number" min="0" value="${reps}"></label><label><input class="done" type="checkbox">✓</label></div>`).join(''):''}<details><summary>📖 Техника и 3D-анимация</summary><p><b>Работающие мышцы:</b> ${guideExtra[name][0]}</p><p><b>Пошаговая техника:</b> ${guideExtra[name][1]}</p><p><b>Дыхание:</b> ${instructions[name][1]}</p><p><b>Частые ошибки:</b> ${guideExtra[name][2]}</p><p><b>Безопасность:</b> ${guideExtra[name][3]}</p>${modelPanel(name)}</details></div>`}
